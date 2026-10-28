@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Follow-up de Clientes</title>
+<style>
+  :root{
+    --bg:#0f172a; --card:#1e293b; --border:#334155;
+    --text:#e2e8f0; --muted:#94a3b8;
+    --ok:#22c55e; --warn:#f59e0b; --crit:#ef4444; --info:#3b82f6;
+    --accent:#8b5cf6;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;
+       background:var(--bg);color:var(--text);padding:20px;line-height:1.4}
+  h1,h2,h3{margin:0 0 10px}
+  h1{font-size:1.6rem;display:flex;align-items:center;gap:8px}
+  .container{max-width:1400px;margin:0 auto}
+  .toolbar{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0}
+  button{
+    background:var(--accent);color:#fff;border:none;padding:9px 14px;
+    border-radius:8px;cursor:pointer;font-size:.85rem;font-weight:600;
+    transition:.15s;
+  }
+  button:hover{filter:brightness(1.15);transform:translateY(-1px)}
+  button.secondary{background:var(--card);border:1px solid var(--border)}
+  button.danger{background:var(--crit)}
+  input,select,textarea{
+    background:var(--card);border:1px solid var(--border);color:var(--text);
+    padding:8px;border-radius:6px;font-size:.85rem;width:100%;font-family:inherit;
+  }
+  textarea{resize:vertical;min-height:36px}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));
+        gap:12px;margin:20px 0}
+  .kpi{background:var(--card);border:1px solid var(--border);border-radius:12px;
+       padding:14px;position:relative;overflow:hidden}
+  .kpi::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--info)}
+  .kpi.crit::before{background:var(--crit)}
+  .kpi.warn::before{background:var(--warn)}
+  .kpi.ok::before{background:var(--ok)}
+  .kpi .label{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  .kpi .value{font-size:1.8rem;font-weight:700;margin-top:4px}
+  .kpi .sub{font-size:.72rem;color:var(--muted);margin-top:2px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:20px 0}
+  @media(max-width:900px){.grid2{grid-template-columns:1fr}}
+  .panel{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px}
+  table{width:100%;border-collapse:collapse;font-size:.8rem}
+  th,td{padding:8px 6px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top}
+  th{color:var(--muted);font-weight:600;font-size:.72rem;text-transform:uppercase}
+  tr:hover td{background:#243247}
+  .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:.7rem;font-weight:700}
+  .b-ok{background:rgba(34,197,94,.15);color:var(--ok)}
+  .b-warn{background:rgba(245,158,11,.15);color:var(--warn)}
+  .b-crit{background:rgba(239,68,68,.15);color:var(--crit)}
+  .b-info{background:rgba(59,130,246,.15);color:var(--info)}
+  .alert-list{list-style:none;padding:0;margin:0;max-height:280px;overflow:auto}
+  .alert-list li{padding:8px;border-left:3px solid var(--warn);background:#0b1220;
+                 margin-bottom:6px;border-radius:4px;font-size:.82rem}
+  .alert-list li.crit{border-color:var(--crit)}
+  .alert-list li.info{border-color:var(--info)}
+  .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);
+            z-index:100;align-items:center;justify-content:center;padding:20px}
+  .modal-bg.open{display:flex}
+  .modal{background:var(--card);border-radius:14px;padding:20px;max-width:720px;
+         width:100%;max-height:90vh;overflow:auto;border:1px solid var(--border)}
+  .form-row{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:10px}
+  .form-row.full{grid-template-columns:1fr}
+  label{font-size:.75rem;color:var(--muted);display:block;margin-bottom:4px}
+  .stage-bars{display:flex;flex-direction:column;gap:8px}
+  .stage-bar{display:flex;align-items:center;gap:10px;font-size:.82rem}
+  .stage-bar .bar{flex:1;height:8px;background:#0b1220;border-radius:4px;overflow:hidden}
+  .stage-bar .fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--info))}
+  .small{font-size:.72rem;color:var(--muted)}
+  .tabs{display:flex;gap:6px;margin:16px 0}
+  .tab{background:transparent;border:1px solid var(--border);color:var(--muted)}
+  .tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>📊 Follow-up de Clientes</h1>
+  <p class="small">Controle de contatos, propostas e alertas. Dados salvos localmente no navegador. Exporte para CSV.</p>
+
+  <div class="toolbar">
+    <button onclick="openForm()">➕ Novo Cliente</button>
+    <button class="secondary" onclick="document.getElementById('fileInput').click()">📥 Importar CSV</button>
+    <button class="secondary" onclick="exportCSV()">📤 Exportar CSV</button>
+    <button class="secondary" onclick="loadDemo()">🎲 Carregar Exemplos</button>
+    <button class="danger" onclick="clearAll()">🗑️ Limpar Tudo</button>
+    <input type="file" id="fileInput" accept=".csv" style="display:none" onchange="importCSV(event)">
+  </div>
+
+  <!-- KPIs -->
+  <div class="kpis" id="kpis"></div>
+
+  <!-- Alertas + Etapas -->
+  <div class="grid2">
+    <div class="panel">
+      <h2>🚨 Alertas Críticos</h2>
+      <ul class="alert-list" id="alerts"></ul>
+    </div>
+    <div class="panel">
+      <h2>📈 Funil por Etapa</h2>
+      <div class="stage-bars" id="stages"></div>
+      <hr style="border-color:var(--border);margin:14px 0">
+      <h3>🔥 Casos Mais Críticos</h3>
+      <ul class="alert-list" id="criticalCases"></ul>
+    </div>
+  </div>
+
+  <!-- Tabela -->
+  <div class="panel">
+    <div class="tabs">
+      <button class="tab active" onclick="filterTable('all',this)">Todos</button>
+      <button class="tab" onclick="filterTable('crit',this)">🔴 Críticos</button>
+      <button class="tab" onclick="filterTable('warn',this)">🟡 Atenção</button>
+      <button class="tab" onclick="filterTable('ok',this)">🟢 OK</button>
+      <input type="text" id="search" placeholder="Buscar por nome, email, telefone..." style="flex:1;max-width:280px" oninput="render()">
+    </div>
+    <div style="overflow-x:auto">
+      <table id="table">
+        <thead><tr>
+          <th>Status</th><th>Cliente</th><th>Contato</th><th>Etapa</th>
+          <th>Últ. Contato</th><th>Dias</th><th>Próx. Ação</th><th>Proposta</th><th>Ações</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Form -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <h2 id="modalTitle">Novo Cliente</h2>
+    <form id="form" onsubmit="saveClient(event)">
+      <input type="hidden" id="editId">
+      <div class="form-row">
+        <div><label>Nome do Cliente *</label><input id="f_nome" required></div>
+        <div><label>Email *</label><input type="email" id="f_email" required></div>
+      </div>
+      <div class="form-row">
+        <div><label>Telefone</label><input id="f_telefone"></div>
+        <div><label>Etapa *</label>
+          <select id="f_etapa" required>
+            <option>Prospecção</option>
+            <option>Contato Feito</option>
+            <option>Reunião</option>
+            <option>Proposta Enviada</option>
+            <option>Negociação</option>
+            <option>Ganho</option>
+            <option>Perdido</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div><label>Data Último Contato</label><input type="date" id="f_ultContato"></div>
+        <div><label>Método de Contato</label>
+          <select id="f_metodo">
+            <option>Email</option><option>Telefone</option>
+            <option>WhatsApp</option><option>Reunião</option><option>Presencial</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row full">
+        <div><label>Anotações</label><textarea id="f_anotacoes"></textarea></div>
+      </div>
+      <div class="form-row">
+        <div><label>Próxima Ação</label><input id="f_proxAcao" placeholder="Ex: Ligar para follow-up"></div>
+        <div><label>Data Próxima Ação</label><input type="date" id="f_dataProxAcao"></div>
+      </div>
+      <div class="form-row">
+        <div><label>Valor da Proposta (R$)</label><input type="number" step="0.01" id="f_valor"></div>
+        <div><label>Data Envio Proposta</label><input type="date" id="f_dataProposta"></div>
+      </div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">
+        <button type="button" class="secondary" onclick="closeForm()">Cancelar</button>
+        <button type="submit">Salvar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+// ============ ESTADO ============
+const KEY = 'followup_clientes_v1';
+let clients = JSON.parse(localStorage.getItem(KEY) || '[]');
+let currentFilter = 'all';
+
+function save(){ localStorage.setItem(KEY, JSON.stringify(clients)); }
+
+// ============ REGRAS DE NEGÓCIO ============
+const ETAPAS = ['Prospecção','Contato Feito','Reunião','Proposta Enviada','Negociação','Ganho','Perdido'];
+
+// Limites (dias) para classificação de risco por etapa
+const SLA = {
+  'Prospecção': 7,
+  'Contato Feito': 5,
+  'Reunião': 3,
+  'Proposta Enviada': 4,
+  'Negociação': 2,
+  'Ganho': 9999,
+  'Perdido': 9999
+};
+
+function diasDesde(dateStr){
+  if(!dateStr) return null;
+  const d = new Date(dateStr + 'T00:00:00');
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  return Math.floor((hoje - d) / 86400000);
+}
+
+function statusCliente(c){
+  if(c.etapa === 'Ganho' || c.etapa === 'Perdido') return 'ok';
+  const dias = diasDesde(c.ultContato);
+  const sla = SLA[c.etapa] || 7;
+  const proxAcaoAtrasada = c.dataProxAcao && diasDesde(c.dataProxAcao) > 0;
+  const propostaParada = c.etapa === 'Proposta Enviada' && diasDesde(c.dataProposta) > 7;
+
+  if(dias === null) return 'crit';           // nunca contatado
+  if(dias > sla * 2 || propostaParada) return 'crit';
+  if(dias > sla || proxAcaoAtrasada) return 'warn';
+  return 'ok';
+}
+
+function criticidade(c){
+  // score: quanto maior, mais crítico
+  const dias = diasDesde(c.ultContato) ?? 999;
+  const sla = SLA[c.etapa] || 7;
+  let score = dias - sla;
+  if(c.etapa === 'Proposta Enviada'){
+    const diasProp = diasDesde(c.dataProposta) ?? 0;
+    score += diasProp * 0.5;
+    score += (c.valor || 0) / 5000; // valor alto pesa
+  }
+  return score;
+}
+
+// ============ RENDER KPIs ============
+function renderKPIs(){
+  const total = clients.length;
+  const criticos = clients.filter(c => statusCliente(c) === 'crit').length;
+  const atencao = clients.filter(c => statusCliente(c) === 'warn').length;
+  const ok = clients.filter(c => statusCliente(c) === 'ok').length;
+  const emProposta = clients.filter(c => c.etapa === 'Proposta Enviada').length;
+  const valorPipeline = clients
+    .filter(c => !['Ganho','Perdido'].includes(c.etapa))
+    .reduce((s,c) => s + (c.valor || 0), 0);
+  const ganhos = clients.filter(c => c.etapa === 'Ganho').length;
+  const taxaConv = total ? Math.round(100 * ganhos / total) : 0;
+
+  const kpis = [
+    {label:'Total', value:total, sub:'clientes cadastrados', cls:'', },
+    {label:'🔴 Críticos', value:criticos, sub:'exigem ação imediata', cls:'crit'},
+    {label:'🟡 Atenção', value:atencao, sub:'follow-up atrasado', cls:'warn'},
+    {label:'🟢 OK', value:ok, sub:'em dia', cls:'ok'},
+    {label:'Pipeline', value:'R$ ' + valorPipeline.toLocaleString('pt-BR'), sub:'valor em negociação', cls:''},
+    {label:'Propostas', value:emProposta, sub:'aguardando resposta', cls:''},
+    {label:'Conversão', value:taxaConv + '%', sub:ganhos + ' ganhos / ' + total, cls:''},
+  ];
+  document.getElementById('kpis').innerHTML = kpis.map(k => `
+    <div class="kpi ${k.cls}">
+      <div class="label">${k.label}</div>
+      <div class="value">${k.value}</div>
+      <div class="sub">${k.sub}</div>
+    </div>`).join('');
+}
+
+// ============ RENDER ALERTAS ============
+function renderAlerts(){
+  const alerts = [];
+  clients.forEach(c => {
+    const st = statusCliente(c);
+    const dias = diasDesde(c.ultContato);
+    if(c.etapa === 'Ganho' || c.etapa === 'Perdido') return;
+
+    if(dias === null){
+      alerts.push({lvl:'crit', txt:`🔴 <b>${c.nome}</b> — nunca foi contatado. Inicie o primeiro contato.`});
+    } else if(st === 'crit'){
+      const sla = SLA[c.etapa];
+      if(c.etapa === 'Proposta Enviada'){
+        const dProp = diasDesde(c.dataProposta);
+        if(dProp > 7){
+          alerts.push({lvl:'crit', txt:`🔴 <b>${c.nome}</b> — proposta enviada há <b>${dProp} dias</b> sem resposta (R$ ${(c.valor||0).toLocaleString('pt-BR')}).`});
+        }
+      }
+      alerts.push({lvl:'crit', txt:`🔴 <b>${c.nome}</b> — ${dias} dias sem contato (SLA: ${sla}d). Etapa: ${c.etapa}.`});
+    } else if(st === 'warn'){
+      if(c.dataProxAcao && diasDesde(c.dataProxAcao) > 0){
+        alerts.push({lvl:'warn', txt:`🟡 <b>${c.nome}</b> — próxima ação "${c.proxAcao||'—'}" atrasada.`});
+      } else {
+        alerts.push({lvl:'warn', txt:`🟡 <b>${c.nome}</b> — ${dias} dias sem contato (SLA: ${SLA[c.etapa]}d).`});
+      }
+    }
+  });
+
+  // Ordena: críticos primeiro
+  alerts.sort((a,b) => (a.lvl === 'crit' ? -1 : 1));
+  const el = document.getElementById('alerts');
+  el.innerHTML = alerts.length
+    ? alerts.slice(0,20).map(a => `<li class="${a.lvl}">${a.txt}</li>`).join('')
+    : '<li class="info">✅ Nenhum alerta. Tudo em dia!</li>';
+}
+
+// ============ RENDER FUNIL + CASOS CRÍTICOS ============
+function renderStages(){
+  const counts = {};
+  ETAPAS.forEach(e => counts[e] = 0);
+  clients.forEach(c => { if(counts[c.etapa] !== undefined) counts[c.etapa]++; });
+  const max = Math.max(1, ...Object.values(counts));
+  document.getElementById('stages').innerHTML = ETAPAS.map(e => `
+    <div class="stage-bar">
+      <span style="width:130px">${e}</span>
+      <div class="bar"><div class="fill" style="width:${(counts[e]/max*100)}%"></div></div>
+      <span style="width:32px;text-align:right"><b>${counts[e]}</b></span>
+    </div>`).join('');
+
+  // Casos mais críticos
+  const top = [...clients]
+    .filter(c => !['Ganho','Perdido'].includes(c.etapa))
+    .sort((a,b) => criticidade(b) - criticidade(a))
+    .slice(0,5);
+  document.getElementById('criticalCases').innerHTML = top.length
+    ? top.map(c => {
+        const dias = diasDesde(c.ultContato) ?? '∞';
+        return `<li class="crit">🔥 <b>${c.nome}</b> — ${dias}d sem contato | ${c.etapa} | R$ ${(c.valor||0).toLocaleString('pt-BR')}</li>`;
+      }).join('')
+    : '<li class="info">Sem casos críticos.</li>';
+}
+
+// ============ RENDER TABELA ============
+function renderTable(){
+  const search = (document.getElementById('search').value || '').toLowerCase();
+  let list = clients.filter(c => {
+    const st = statusCliente(c);
+    if(currentFilter === 'crit' && st !== 'crit') return false;
+    if(currentFilter === 'warn' && st !== 'warn') return false;
+    if(currentFilter === 'ok' && st !== 'ok') return false;
+    if(search){
+      const hay = [c.nome, c.email, c.telefone].join(' ').toLowerCase();
+      if(!hay.includes(search)) return false;
+    }
+    return true;
+  });
+  // ordena: críticos primeiro, depois por dias sem contato
+  list.sort((a,b) => criticidade(b) - criticidade(a));
+
+  const map = {crit:'🔴 Crítico', warn:'🟡 Atenção', ok:'🟢 OK'};
+  const badge = {crit:'b-crit', warn:'b-warn', ok:'b-ok'};
+
+  document.getElementById('tbody').innerHTML = list.length
+    ? list.map(c => {
+        const st = statusCliente(c);
+        const dias = diasDesde(c.ultContato);
+        return `<tr>
+          <td><span class="badge ${badge[st]}">${map[st]}</span></td>
+          <td><b>${c.nome}</b><br><span class="small">${c.email}</span></td>
+          <td>${c.telefone || '-'}</td>
+          <td>${c.etapa}</td>
+          <td>${c.ultContato || '—'}<br><span class="small">${dias === null ? 'nunca' : dias + 'd atrás'}</span></td>
+          <td><b style="color:${dias === null || dias > (SLA[c.etapa]||7) ? 'var(--crit)' : 'var(--ok)'}">${dias ?? '∞'}</b></td>
+          <td>${c.proxAcao || '—'}<br><span class="small">${c.dataProxAcao || ''}</span></td>
+          <td>R$ ${(c.valor||0).toLocaleString('pt-BR')}<br><span class="small">${c.dataProposta || ''}</span></td>
+          <td>
+            <button class="secondary" onclick="editClient('${c.id}')" style="padding:4px 8px;font-size:.7rem">✏️</button>
+            <button class="danger" onclick="deleteClient('${c.id}')" style="padding:4px 8px;font-size:.7rem">🗑️</button>
+          </td>
+        </tr>`;
+      }).join('')
+    : '<tr><td colspan="9" style="text-align:center;padding:30px;color:var(--muted)">Nenhum cliente. Clique em "Novo Cliente" ou "Carregar Exemplos".</td></tr>';
+}
+
+function render(){
+  renderKPIs();
+  renderAlerts();
+  renderStages();
+  renderTable();
+}
+
+// ============ CRUD ============
+function openForm(c){
+  document.getElementById('editId').value = c?.id || '';
+  document.getElementById('modalTitle').textContent = c ? 'Editar Cliente' : 'Novo Cliente';
+  document.getElementById('f_nome').value = c?.nome || '';
+  document.getElementById('f_email').value = c?.email || '';
+  document.getElementById('f_telefone').value = c?.telefone || '';
+  document.getElementById('f_etapa').value = c?.etapa || 'Prospecção';
+  document.getElementById('f_ultContato').value = c?.ultContato || '';
+  document.getElementById('f_metodo').value = c?.metodo || 'Email';
+  document.getElementById('f_anotacoes').value = c?.anotacoes || '';
+  document.getElementById('f_proxAcao').value = c?.proxAcao || '';
+  document.getElementById('f_dataProxAcao').value = c?.dataProxAcao || '';
+  document.getElementById('f_valor').value = c?.valor || '';
+  document.getElementById('f_dataProposta').value = c?.dataProposta || '';
+  document.getElementById('modalBg').classList.add('open');
+}
+function closeForm(){ document.getElementById('modalBg').classList.remove('open'); }
+
+function editClient(id){
+  const c = clients.find(x => x.id === id);
+  if(c) openForm(c);
+}
+
+function saveClient(e){
+  e.preventDefault();
+  const id = document.getElementById('editId').value;
+  const data = {
+    id: id || crypto.randomUUID(),
+    nome: document.getElementById('f_nome').value.trim(),
+    email: document.getElementById('f_email').value.trim(),
+    telefone: document.getElementById('f_telefone').value.trim(),
+    etapa: document.getElementById('f_etapa').value,
+    ultContato: document.getElementById('f_ultContato').value,
+    metodo: document.getElementById('f_metodo').value,
+    anotacoes: document.getElementById('f_anotacoes').value.trim(),
+    proxAcao: document.getElementById('f_proxAcao').value.trim(),
+    dataProxAcao: document.getElementById('f_dataProxAcao').value,
+    valor: parseFloat(document.getElementById('f_valor').value) || 0,
+    dataProposta: document.getElementById('f_dataProposta').value,
+  };
+  if(id){
+    const i = clients.findIndex(x => x.id === id);
+    clients[i] = data;
+  } else {
+    clients.push(data);
+  }
+  save(); closeForm(); render();
+}
+
+function deleteClient(id){
+  if(!confirm('Excluir este cliente?')) return;
+  clients = clients.filter(c => c.id !== id);
+  save(); render();
+}
+
+function clearAll(){
+  if(!confirm('Apagar TODOS os clientes? Esta ação não pode ser desfeita.')) return;
+  clients = []; save(); render();
+}
+
+function filterTable(f, btn){
+  currentFilter = f;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  renderTable();
+}
+
+// ============ CSV ============
+const CSV_HEADERS = ['nome','email','telefone','etapa','ultContato','metodo','anotacoes','proxAcao','dataProxAcao','valor','dataProposta'];
+
+function exportCSV(){
+  const rows = [CSV_HEADERS.join(';')];
+  clients.forEach(c => {
+    rows.push(CSV_HEADERS.map(h => `"${String(c[h] ?? '').replace(/"/g,'""')}"`).join(';'));
+  });
+  const blob = new Blob(['\uFEFF' + rows.join('\n')], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'followup_clientes_' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+}
+
+function importCSV(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const text = ev.target.result;
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    if(lines.length < 2){ alert('CSV vazio ou inválido'); return; }
+    const sep = lines[0].includes(';') ? ';' : ',';
+    const headers = lines[0].split(sep).map(h => h.trim().replace(/^"|"$/g,'').toLowerCase());
+    let importados = 0;
+    for(let i=1;i<lines.length;i++){
+      const vals = lines[i].split(sep).map(v => v.trim().replace(/^"|"$/g,'').replace(/""/g,'"'));
+      const obj = {id: crypto.randomUUID()};
+      headers.forEach((h,idx) => {
+        let key = h;
+        // aliases comuns
+        if(h === 'data ultimo contato' || h === 'data_ultimo_contato') key = 'ultContato';
+        if(h === 'data proxima acao' || h === 'data_proxima_acao') key = 'dataProxAcao';
+        if(h === 'proxima acao' || h === 'proxima_acao') key = 'proxAcao';
+        if(h === 'data envio proposta' || h === 'data_envio_proposta') key = 'dataProposta';
+        if(key === 'valor') obj[key] = parseFloat(vals[idx]) || 0;
+        else obj[key] = vals[idx] || '';
+      });
+      if(!obj.nome) continue;
+      if(!obj.etapa || !ETAPAS.includes(obj.etapa)) obj.etapa = 'Prospecção';
+      importados++;
+      clients.push(obj);
+    }
+    save(); render();
+    alert(`✅ ${importados} clientes importados!`);
+    e.target.value = '';
+  };
+  reader.readAsText(file, 'utf-8');
+}
+
+// ============ DEMO ============
+function loadDemo(){
+  const hoje = new Date();
+  const d = n => { const x = new Date(hoje); x.setDate(x.getDate()-n); return x.toISOString().slice(0,10); };
+  const f = n => { const x = new Date(hoje); x.setDate(x.getDate()+n); return x.toISOString().slice(0,10); };
+
+  clients = [
+    {id:crypto.randomUUID(), nome:'Alpha Tech Ltda', email:'contato@alphatech.com', telefone:'(11) 99999-1111',
+     etapa:'Proposta Enviada', ultContato:d(12), metodo:'Email', anotacoes:'Pediu prazo de 15 dias.',
+     proxAcao:'Ligar follow-up', dataProxAcao:d(3), valor:45000, dataProposta:d(12)},
+    {id:crypto.randomUUID(), nome:'Beta Comércio', email:'compras@beta.com', telefone:'(21) 98888-2222',
+     etapa:'Negociação', ultContato:d(1), metodo:'WhatsApp', anotacoes:'Negociando desconto.',
+     proxAcao:'Enviar contraproposta', dataProxAcao:f(1), valor:22000, dataProposta:d(5)},
+    {id:crypto.randomUUID(), nome:'Gamma Serviços', email:'gamma@servicos.com', telefone:'(31) 97777-3333',
+     etapa:'Prospecção', ultContato:'', metodo:'', anotacoes:'Lead novo do site.',
+     proxAcao:'Primeiro contato', dataProxAcao:f(1), valor:0, dataProposta:''},
+    {id:crypto.randomUUID(), nome:'Delta Consultoria', email:'delta@consult.com', telefone:'(41) 96666-4444',
+     etapa:'Reunião', ultContato:d(6), metodo:'Reunião', anotacoes:'Reunião produtiva.',
+     proxAcao:'Enviar proposta', dataProxAcao:d(1), valor:0, dataProposta:''},
+    {id:crypto.randomUUID(), nome:'Épsilon SA', email:'eps@sa.com', telefone:'(51) 95555-5555',
+     etapa:'Ganho', ultContato:d(2), metodo:'Telefone', anotacoes:'Fechado!',
+     proxAcao:'Onboarding', dataProxAcao:f(3), valor:80000, dataProposta:d(20)},
+    {id:crypto.randomUUID(), nome:'Zeta Digital', email:'zeta@digital.com', telefone:'(61) 94444-6666',
+     etapa:'Proposta Enviada', ultContato:d(20), metodo:'Email', anotacoes:'Sem resposta.',
+     proxAcao:'Retomar contato', dataProxAcao:d(10), valor:15000, dataProposta:d(20)},
+    {id:crypto.randomUUID(), nome:'Eta Indústria', email:'eta@ind.com', telefone:'(71) 93333-7777',
+     etapa:'Perdido', ultContato:d(30), metodo:'Telefone', anotacoes:'Fechou com concorrente.',
+     proxAcao:'Recontatar em 6 meses', dataProxAcao:f(180), valor:30000, dataProposta:d(45)},
+  ];
+  save(); render();
+}
+
+// ============ INIT ============
+render();
+</script>
+</body>
+</html>
